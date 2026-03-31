@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # copilot-shell (npm)
+  - package-ecosystem: "npm"
+    directory: "/src/copilot-shell"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "deps"
+      - "copilot-shell"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # agent-sec-core (cargo)
+  - package-ecosystem: "cargo"
+    directory: "/src/agent-sec-core"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "deps"
+      - "agent-sec-core"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # agentsight (cargo)
+  - package-ecosystem: "cargo"
+    directory: "/src/agentsight"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "deps"
+      - "agentsight"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(ci)"
