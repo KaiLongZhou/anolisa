@@ -1,0 +1,325 @@
+# Building ANOLISA from Source
+
+This guide describes how to prepare the development environment, build each component from source, run tests, and build RPM packages.
+
+Two paths are provided:
+
+1. Quick Start: run one script to check/install dependencies and build selected components.
+2. Component-by-Component: build each module manually.
+
+## Repository Layout
+
+```text
+anolisa/
+├── src/
+│   ├── copilot-shell/       # AI terminal assistant (Node.js / TypeScript)
+│   ├── agent-sec-core/      # Agent security sandbox (Rust + Python)
+│   ├── agentsight/          # eBPF observability agent (Rust)
+│   └── os-skills/           # Ops skills (Markdown + optional scripts)
+├── scripts/
+│   ├── build-all.sh         # Unified build entry (you will provide this script)
+│   └── rpm-build.sh         # Unified RPM build script
+├── tests/
+│   └── run-all-tests.sh     # Unified test entry
+├── Makefile
+└── docs/
+```
+
+## Environment Dependencies
+
+### Quick Matrix
+
+| Component | Required Tools |
+|-----------|----------------|
+| copilot-shell | Node.js >= 20, npm >= 10, make, g++ |
+| agent-sec-core | Rust == 1.93.0, Python >= 3.12, uv (Linux only) |
+| agentsight | Rust >= 1.80, clang >= 14, libbpf headers, kernel headers (Linux only) |
+| os-skills | Python >= 3.12 (only for optional scripts) |
+| RPM packaging | rpmbuild (Linux only) |
+
+## Quick Start
+
+Use the unified script (to be added by you):
+
+```bash
+git clone https://github.com/alibaba/anolisa.git
+cd anolisa
+
+# Install dependencies + build all components
+./scripts/build-all.sh --install-deps
+
+# Install dependencies only
+./scripts/build-all.sh --deps-only
+
+# Build selected components only
+./scripts/build-all.sh --install-deps --component shell --component sec
+```
+
+### Script Options
+
+| Flag | Description |
+|------|-------------|
+| --install-deps | Install dependencies before build |
+| --deps-only | Install dependencies only |
+| --component <name> | Build selected component(s), repeatable: shell, sec, sight |
+| --help | Show help |
+
+### Important Notes
+
+1. Node.js and Rust should be installed from upstream installers (nvm / rustup), not pinned to distro packages.
+2. AgentSight system dependencies (clang/llvm/libbpf/kernel headers) should be installed through your distro package manager.
+3. os-skills are mostly static assets and do not require compilation.
+
+---
+
+## Install Node.js (for copilot-shell)
+
+Required: Node.js >= 20, npm >= 10.
+
+### Recommended: nvm
+
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.bashrc   # or source ~/.zshrc
+
+# Install and activate Node.js 20+
+nvm install 20
+nvm use 20
+
+# Verify
+node -v && npm -v
+```
+---
+
+## Install Rust (for agent-sec-core and agentsight)
+
+Required: agent-sec-core needs Rust == 1.93.0; agentsight needs Rust >= 1.80.
+
+### Recommended: rustup
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Verify
+rustc --version && cargo --version
+```
+
+> The repository uses a pinned toolchain for agent-sec-core. rustup is the recommended way to match it consistently.
+
+---
+
+## Install Python and uv (for agent-sec-core and os-skills)
+
+Required: Python >= 3.12.
+
+```bash
+# Install uv (choose one)
+pip3 install uv
+# or
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install Python 3.12 via uv
+uv python install 3.12
+
+# Verify
+uv --version
+uv python find 3.12
+```
+
+---
+
+## Install AgentSight System Dependencies (Package Manager Required)
+
+AgentSight depends on clang/llvm/libbpf/kernel headers for eBPF build steps. These are system-level dependencies and should be installed via package manager.
+
+### RPM-based (Fedora / RHEL / Anolis / Alinux)
+
+```bash
+sudo dnf install -y clang llvm libbpf-devel elfutils-libelf-devel zlib-devel openssl-devel perl perl-IPC-Cmd
+sudo dnf install -y kernel-devel-$(uname -r)
+```
+
+### Debian / Ubuntu
+
+```bash
+sudo apt-get update -y
+sudo apt-get install -y clang llvm libbpf-dev libelf-dev zlib1g-dev libssl-dev perl linux-headers-$(uname -r)
+```
+
+> Some distributions do not provide a separate perl-core package. That is expected.
+
+### Kernel Requirement
+
+AgentSight requires Linux kernel >= 5.10 and BTF enabled (`CONFIG_DEBUG_INFO_BTF=y`).
+
+---
+
+## Version Check
+
+```bash
+node -v
+npm -v
+rustc --version
+cargo --version
+python3 --version
+uv --version
+clang --version
+```
+
+---
+
+## Build Components Manually
+
+### 1. copilot-shell
+
+```bash
+cd src/copilot-shell
+make install
+make build
+npm run bundle
+```
+
+Artifact:
+
+- dist/cli.js
+
+### 2. agent-sec-core (Linux only)
+
+```bash
+cd src/agent-sec-core
+make build-sandbox
+```
+
+Artifact:
+
+- linux-sandbox/target/release/linux-sandbox
+
+### 3. agentsight (Linux only)
+
+```bash
+cd src/agentsight
+cargo build --release
+```
+
+Artifact:
+
+- target/release/agentsight
+
+### 4. os-skills
+
+No compilation is required. Skill packages can be generated by flattening directories that contain a `SKILL.md` file under `src/os-skills`.
+
+#### Install
+
+Skills are discovered by Copilot Shell from one of three search paths:
+
+| Scope | Path |
+|-------|------|
+| Project | `.copilot/skills/` |
+| User | `~/.copilot/skills/` |
+| System | `/usr/share/anolisa/skills/` |
+
+Manual deployment (user-level):
+
+```bash
+# The build script copies skills automatically:
+./scripts/build-all.sh --component skills
+
+# Or manually:
+mkdir -p ~/.copilot/skills
+find src/os-skills -name 'SKILL.md' -exec sh -c \
+	'cp -rp "$(dirname "$1")" ~/.copilot/skills/' _ {} \;
+```
+
+RPM install (system-level):
+
+```bash
+sudo yum install anolisa-skills
+# Skills are installed to /usr/share/anolisa/skills/
+```
+
+### Verify
+
+```bash
+# Copilot Shell lists discovered skills
+co /skills
+```
+
+---
+
+## Run Tests
+
+### Unified Entry
+
+```bash
+./tests/run-all-tests.sh
+./tests/run-all-tests.sh --filter shell
+./tests/run-all-tests.sh --filter sec
+./tests/run-all-tests.sh --filter sight
+```
+
+### Per Component
+
+```bash
+# copilot-shell
+cd src/copilot-shell && npm test
+
+# agent-sec-core
+cd src/agent-sec-core
+pytest tests/integration-test/ tests/unit-test/
+
+# agentsight
+cd src/agentsight && cargo test
+```
+
+---
+
+## Build RPM Packages
+
+Use the unified script:
+
+```bash
+./scripts/rpm-build.sh copilot-shell
+./scripts/rpm-build.sh agent-sec-core
+./scripts/rpm-build.sh anolisa-skills
+./scripts/rpm-build.sh agentsight
+./scripts/rpm-build.sh all
+```
+
+Artifacts:
+
+- scripts/rpmbuild/RPMS/<arch>/*.rpm
+- scripts/rpmbuild/SRPMS/*.rpm
+
+---
+
+## Troubleshooting
+
+### Node.js version mismatch
+
+Use nvm and re-activate the expected version:
+
+```bash
+source ~/.bashrc
+nvm use 20
+```
+
+### Rust toolchain mismatch
+
+```bash
+rustup show
+```
+
+### AgentSight missing libbpf / headers
+
+Install distro packages from the AgentSight dependency section above.
+
+### AgentSight runtime permission denied
+
+```bash
+sudo ./target/release/agentsight --help
+# or
+sudo setcap cap_bpf,cap_perfmon=ep ./target/release/agentsight
+```
