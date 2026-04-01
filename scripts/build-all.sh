@@ -5,15 +5,15 @@
 # Usage:
 #   ./scripts/build-all.sh --install-deps                     # install deps + build all
 #   ./scripts/build-all.sh --deps-only                        # install deps only
-#   ./scripts/build-all.sh --install-deps --component shell   # deps + build copilot-shell
-#   ./scripts/build-all.sh --component sec --component sight  # build without dep install
+#   ./scripts/build-all.sh --install-deps --component cosh    # deps + build copilot-shell
+#   ./scripts/build-all.sh --component sec-core --component sight   # build without dep install
 #   ./scripts/build-all.sh --help
 #
 # Components (build order):
-#   shell    copilot-shell      (Node.js / TypeScript)
+#   cosh     copilot-shell      (Node.js / TypeScript)
 #   skills   os-skills          (Markdown skill definitions, no compilation)
-#   sec      agent-sec-core     (Rust sandbox, Linux only)
-#   sight    agentsight         (eBPF / Rust, Linux only)
+#   sec-core agent-sec-core     (Rust sandbox, Linux only)
+#   sight    agentsight         (eBPF / Rust, Linux only, NOT built by default)
 # ──────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -94,9 +94,20 @@ detect_distro() {
 
 # ─── component helpers ───
 
+# Default components (sight is excluded — it is optional and provides audit
+# capabilities only; use --component sight to include it explicitly).
+DEFAULT_COMPONENTS=(cosh skills sec-core)
+
 want_component() {
     local c="$1"
-    if [[ ${#COMPONENTS[@]} -eq 0 ]]; then return 0; fi
+    if [[ ${#COMPONENTS[@]} -eq 0 ]]; then
+        # No explicit --component flags: use default list
+        local d
+        for d in "${DEFAULT_COMPONENTS[@]}"; do
+            if [[ "$d" == "$c" ]]; then return 0; fi
+        done
+        return 1
+    fi
     local x
     for x in "${COMPONENTS[@]}"; do
         if [[ "$x" == "$c" ]]; then return 0; fi
@@ -294,16 +305,16 @@ do_install_deps() {
     step "Detecting system"
     detect_distro
 
-    if want_component shell; then
+    if want_component cosh; then
         install_nvm_and_node
         install_build_tools
     fi
 
-    if want_component sec || want_component sight; then
+    if want_component sec-core || want_component sight; then
         install_rust
     fi
 
-    if want_component sec; then
+    if want_component sec-core; then
         install_uv
     fi
 
@@ -317,7 +328,7 @@ do_install_deps() {
 
 # ─── build functions ───
 
-build_shell() {
+build_cosh() {
     step "Building copilot-shell"
     local dir="$PROJECT_ROOT/src/copilot-shell"
     [[ -d "$dir" ]] || die "Directory not found: $dir"
@@ -366,7 +377,7 @@ build_skills() {
     ok "os-skills: ${count} skills deployed to $target"
 }
 
-build_sec() {
+build_sec_core() {
     step "Building agent-sec-core (linux-sandbox)"
     local dir="$PROJECT_ROOT/src/agent-sec-core"
     [[ -d "$dir" ]] || die "Directory not found: $dir"
@@ -396,7 +407,11 @@ build_sight() {
     cd "$dir"
 
     info "cargo build --release ..."
-    cargo build --release
+    if [[ -f Makefile ]] && grep -q 'build' Makefile; then
+        make build
+    else
+        cargo build --release
+    fi
 
     local bin="target/release/agentsight"
     if [[ -f "$bin" ]]; then
@@ -409,11 +424,11 @@ build_sight() {
 }
 
 do_build() {
-    # Fixed build order: shell -> skills -> sec -> sight
-    if want_component shell;  then build_shell;  fi
-    if want_component skills; then build_skills; fi
-    if want_component sec;    then build_sec;    fi
-    if want_component sight;  then build_sight;  fi
+    # Fixed build order: cosh -> skills -> sec-core -> sight (sight only if explicitly requested)
+    if want_component cosh;     then build_cosh;     fi
+    if want_component skills;   then build_skills;   fi
+    if want_component sec-core; then build_sec_core; fi
+    if want_component sight;    then build_sight;    fi
 }
 
 print_artifacts() {
@@ -445,26 +460,31 @@ $(echo -e "${BOLD}Usage:${NC}")
 $(echo -e "${BOLD}Options:${NC}")
   --install-deps          Install required toolchains and libraries before building
   --deps-only             Install dependencies only, do not build
-  --component <name>      Build specific component (can be repeated). If omitted, all are built.
-                          Valid names: shell, skills, sec, sight
+  --component <name>      Build specific component (can be repeated).
+                          Valid names: cosh, skills, sec-core, sight
+                          Default (no --component): cosh, skills, sec-core
+                          (sight is optional and must be explicitly requested)
   -h, --help              Show this help
 
 $(echo -e "${BOLD}Examples:${NC}")
-  $0 --install-deps                              # Install deps + build everything
+  $0 --install-deps                              # Install deps + build default components
   $0 --deps-only                                 # Install deps only
-  $0 --install-deps --component shell            # Install deps + build copilot-shell
-  $0 --component sec --component sight           # Build sec + sight (no dep install)
+  $0 --install-deps --component cosh             # Install deps + build copilot-shell
+  $0 --component sec-core --component sight            # Build sec-core + sight (no dep install)
+  $0 --install-deps --component cosh --component skills --component sec-core --component sight
+                                                 # Build all including optional sight
 
 $(echo -e "${BOLD}Components:${NC}")
-  shell    copilot-shell      Node.js / TypeScript AI terminal assistant
-  skills   os-skills          Markdown skill definitions (validation only)
-  sec      agent-sec-core     Rust secure sandbox (Linux only)
-  sight    agentsight         eBPF observability agent (Linux only)
+  cosh     copilot-shell      Node.js / TypeScript AI terminal assistant       [default]
+  skills   os-skills          Markdown skill definitions (deploy only)          [default]
+  sec-core agent-sec-core     Rust secure sandbox (Linux only)                  [default]
+  sight    agentsight         eBPF observability/audit agent (Linux only)        [optional]
 
 $(echo -e "${BOLD}What this script does:${NC}")
   1. Detects which toolchains are already installed and skips them if present
   2. Installs missing toolchains from upstream: nvm for Node.js, rustup for Rust, uv for Python
-  3. Builds each component in order: shell -> skills -> sec -> sight
+  3. Builds default components in order: cosh -> skills -> sec-core
+     (sight is optional — add --component sight to include it)
   4. Reports artifact locations at the end
 
 $(echo -e "${BOLD}Note:${NC}")
@@ -489,10 +509,10 @@ parse_args() {
                 shift
                 ;;
             --component)
-                [[ -n "${2:-}" ]] || die "--component requires a value (shell, skills, sec, sight)"
+                [[ -n "${2:-}" ]] || die "--component requires a value (cosh, skills, sec-core, sight)"
                 case "$2" in
-                    shell|skills|sec|sight) COMPONENTS+=("$2") ;;
-                    *) die "Unknown component: $2. Valid: shell, skills, sec, sight" ;;
+                    cosh|skills|sec-core|sight) COMPONENTS+=("$2") ;;
+                    *) die "Unknown component: $2. Valid: cosh, skills, sec-core, sight" ;;
                 esac
                 shift 2
                 ;;

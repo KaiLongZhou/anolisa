@@ -15,9 +15,9 @@
 anolisa/
 ├── src/
 │   ├── copilot-shell/       # AI 终端助手（Node.js / TypeScript）
+│   ├── os-skills/           # 运维技能库（Markdown + 可选脚本）
 │   ├── agent-sec-core/      # Agent 安全沙箱（Rust + Python）
-│   ├── agentsight/          # eBPF 可观测引擎（Rust）
-│   └── os-skills/           # 运维技能库（Markdown + 可选脚本）
+│   └── agentsight/          # eBPF 可观测/审计引擎（Rust，可选）
 ├── scripts/
 │   ├── build-all.sh         # 统一构建入口
 │   └── rpm-build.sh         # 统一 RPM 构建脚本
@@ -29,14 +29,12 @@ anolisa/
 
 ## 环境依赖
 
-### 依赖速查表
-
 | 组件 | 所需工具 |
 |------|----------|
 | copilot-shell | Node.js >= 20、npm >= 10、make、g++ |
-| agent-sec-core | Rust == 1.93.0、Python >= 3.12、uv（仅 Linux） |
-| agentsight | Rust >= 1.80、clang >= 14、libbpf 头文件、内核头文件（仅 Linux） |
 | os-skills | Python >= 3.12（仅可选脚本需要） |
+| agent-sec-core | Rust == 1.93.0、Python >= 3.12、uv（仅 Linux） |
+| agentsight *（可选）* | Rust >= 1.80、clang >= 14、libbpf 头文件、内核头文件（仅 Linux） |
 | RPM 打包 | rpmbuild（仅 Linux） |
 
 ## 快速开始
@@ -47,7 +45,7 @@ anolisa/
 git clone https://github.com/alibaba/anolisa.git
 cd anolisa
 
-# 安装依赖 + 构建全部组件
+# 安装依赖 + 构建默认组件（shell、skills、sec）
 ./scripts/build-all.sh --install-deps
 
 # 仅安装依赖
@@ -55,6 +53,9 @@ cd anolisa
 
 # 仅构建指定组件
 ./scripts/build-all.sh --install-deps --component shell --component sec
+
+# 包含可选的 agentsight
+./scripts/build-all.sh --install-deps --component shell --component skills --component sec --component sight
 ```
 
 ### 脚本选项
@@ -63,87 +64,150 @@ cd anolisa
 |------|------|
 | --install-deps | 构建前先安装依赖 |
 | --deps-only | 仅安装依赖，不构建 |
-| --component <名称> | 构建指定组件（可重复使用）：shell、sec、sight |
+| --component <名称> | 构建指定组件（可重复使用）：shell、skills、sec、sight。默认：shell、skills、sec |
 | --help | 显示帮助信息 |
 
 ### 注意事项
 
 1. Node.js 和 Rust 建议通过上游安装器（nvm / rustup）安装，而非使用发行版软件包。
-2. AgentSight 的系统依赖（clang/llvm/libbpf/内核头文件）需通过发行版包管理器安装。
-3. os-skills 大部分是静态资源，无需编译。
+2. os-skills 大部分是静态资源，无需编译。
+3. AgentSight 是**可选组件** — 它提供审计和可观测性能力，但不是核心功能所必需的。默认构建不包含它，使用 `--component sight` 显式包含。
+4. AgentSight 的系统依赖（clang/llvm/libbpf/内核头文件）需通过发行版包管理器安装。
 
 ---
 
-## 安装 Node.js（用于 copilot-shell）
+## 分组件构建
+
+如果你希望手动设置各工具链并逐个构建组件，而非使用统一构建脚本，请按以下四个步骤操作。
+
+### 步骤一：安装依赖
+
+#### Node.js（用于 copilot-shell）
 
 要求：Node.js >= 20、npm >= 10。
 
-### 推荐方式：nvm
+**Alinux 4（已验证）**
 
 ```bash
-# 安装 nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc   # 或 source ~/.zshrc
+sudo dnf install -y nodejs npm make gcc-c++
+```
 
-# 安装并激活 Node.js 20+
-nvm install 20
-nvm use 20
+**其他发行版：nvm**
+
+```bash
+# 如果 Node.js >= 20 已安装则跳过
+if command -v node &>/dev/null && node -v | grep -qE '^v(2[0-9]|[3-9][0-9])'; then
+  echo "Node.js $(node -v) 已安装，跳过"
+else
+  # 安装 nvm
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  source "$HOME/.$(basename "$SHELL")rc"
+
+  # 安装并激活 Node.js 20+
+  nvm install 20
+  nvm use 20
+fi
 
 # 验证
-node -v && npm -v
+node -v   # 期望：v20.x.x 或更高
+npm -v    # 期望：10.x.x 或更高
 ```
 ---
 
-## 安装 Rust（用于 agent-sec-core 和 agentsight）
+#### Rust（用于 agent-sec-core 和 agentsight）
 
 要求：agent-sec-core 需要 Rust == 1.93.0；agentsight 需要 Rust >= 1.80。
 
-### 推荐方式：rustup
+**Alinux 4（已验证）**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source "$HOME/.cargo/env"
-
-# 验证
-rustc --version && cargo --version
+sudo dnf install -y rust cargo gcc make
 ```
 
-> 仓库为 agent-sec-core 固定了工具链版本，使用 rustup 可以确保版本一致。
+**Ubuntu 24.04（已验证）**
+
+```bash
+sudo apt install -y rustc-1.91 cargo-1.91 gcc make
+sudo update-alternatives --install /usr/bin/cargo cargo /usr/bin/cargo-1.91 100
+```
+
+> 系统 `rust` 包的版本可能低于 1.93.0。如果 agent-sec-core 构建因版本不匹配而失败，请改用下方的 rustup。
+
+**其他发行版：rustup**
+
+```bash
+# 如果 Rust 已安装则跳过
+if command -v rustc &>/dev/null && command -v cargo &>/dev/null; then
+  echo "Rust $(rustc --version) 已安装，跳过"
+else
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  source "$HOME/.cargo/env"
+fi
+
+# 验证
+rustc --version   # 期望：rustc 1.80.0 或更高
+cargo --version   # 期望：cargo 1.80.0 或更高
+```
+
+> 仓库为 agent-sec-core 固定了工具链版本（`rust-toolchain.toml`）。如果系统 Rust 版本不匹配，rustup 会在仓库内构建时自动下载正确版本。
 
 ---
 
-## 安装 Python 和 uv（用于 agent-sec-core 和 os-skills）
+#### Python 和 uv（用于 agent-sec-core 和 os-skills）
 
 要求：Python >= 3.12。
 
+**Alinux 4（已验证）**
+
 ```bash
-# 安装 uv（二选一）
 pip3 install uv
-# 或
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 通过 uv 安装 Python 3.12
 uv python install 3.12
+```
 
+**Ubuntu 24.04（已验证）**
+
+```bash
+sudo apt install -y pipx
+pipx ensurepath
+source "$HOME/.$(basename "$SHELL")rc"
+pipx install uv
+```
+
+**其他发行版：uv**
+
+```bash
+# 如果 uv 已安装则跳过
+if command -v uv &>/dev/null; then
+  echo "uv $(uv --version) 已安装，跳过"
+else
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  source "$HOME/.$(basename "$SHELL")rc"
+fi
+
+# 通过 uv 安装 Python 3.12（已存在则跳过）
+uv python install 3.12
+```
+
+```bash
 # 验证
-uv --version
-uv python find 3.12
+uv --version          # 期望：uv 0.x.x 或更高
+uv python find 3.12   # 期望：输出 python3.12 可执行文件路径
 ```
 
 ---
 
-## 安装 AgentSight 系统依赖（需包管理器）
+#### AgentSight 系统依赖（可选，需包管理器）
 
-AgentSight 依赖 clang/llvm/libbpf/内核头文件来完成 eBPF 编译步骤。这些是系统级依赖，需通过包管理器安装。
+AgentSight 是**可选组件**，提供基于 eBPF 的审计和可观测性能力。它不是 ANOLISA 核心功能所必需的。如果你选择构建它，需要以下系统级依赖：
 
-### RPM 系（Fedora / RHEL / Anolis / Alinux）
+**dnf（Alinux / Anolis OS / Fedora / RHEL / CentOS / etc.）**
 
 ```bash
 sudo dnf install -y clang llvm libbpf-devel elfutils-libelf-devel zlib-devel openssl-devel perl perl-IPC-Cmd
 sudo dnf install -y kernel-devel-$(uname -r)
 ```
 
-### Debian / Ubuntu
+**apt（Debian / Ubuntu）**
 
 ```bash
 sudo apt-get update -y
@@ -152,29 +216,29 @@ sudo apt-get install -y clang llvm libbpf-dev libelf-dev zlib1g-dev libssl-dev p
 
 > 部分发行版没有单独的 perl-core 包，这是正常的。
 
-### 内核要求
+**内核要求**
 
 AgentSight 要求 Linux 内核 >= 5.10 且启用 BTF（`CONFIG_DEBUG_INFO_BTF=y`）。
 
 ---
 
-## 版本检查
+#### 版本检查
 
 ```bash
-node -v
-npm -v
-rustc --version
-cargo --version
-python3 --version
-uv --version
-clang --version
+node -v            # v20.x.x
+npm -v             # 10.x.x
+rustc --version    # rustc 1.80.0+
+cargo --version    # cargo 1.80.0+
+python3 --version  # Python 3.12.x
+uv --version       # uv 0.x.x
+clang --version    # clang version 14+
 ```
 
 ---
 
-## 分组件手动构建
+### 步骤二：构建组件
 
-### 1. copilot-shell
+#### copilot-shell
 
 ```bash
 cd src/copilot-shell
@@ -187,31 +251,21 @@ npm run bundle
 
 - dist/cli.js
 
-### 2. agent-sec-core（仅 Linux）
+#### 运行
 
 ```bash
-cd src/agent-sec-core
-make build-sandbox
+# 从构建目录直接运行
+node dist/cli.js
+
+# 或添加持久的 co 别名到你的 shell
+make create-alias
+source "$HOME/.$(basename "$SHELL")rc"
+co
 ```
 
-产物：
+#### os-skills
 
-- linux-sandbox/target/release/linux-sandbox
-
-### 3. agentsight（仅 Linux）
-
-```bash
-cd src/agentsight
-cargo build --release
-```
-
-产物：
-
-- target/release/agentsight
-
-### 4. os-skills
-
-无需编译。技能包通过扫描 `src/os-skills` 下包含 `SKILL.md` 文件的目录来生成。
+无需编译。每个技能是一个目录，包含 `SKILL.md` 及可选的辅助文件（脚本、参考资料等）。部署时会将整个技能目录复制到目标路径。
 
 #### 安装
 
@@ -235,25 +289,52 @@ find src/os-skills -name 'SKILL.md' -exec sh -c \
 	'cp -rp "$(dirname "$1")" ~/.copilot/skills/' _ {} \;
 ```
 
-RPM 安装（系统级）：
-
-```bash
-sudo yum install anolisa-skills
-# 技能将安装到 /usr/share/anolisa/skills/
-```
-
-### 验证
+#### 验证
 
 ```bash
 # Copilot Shell 列出已发现的技能
 co /skills
 ```
 
----
+#### agent-sec-core（仅 Linux）
 
-## 运行测试
+```bash
+cd src/agent-sec-core
+make build-sandbox
+```
 
-### 统一入口
+产物：
+
+- linux-sandbox/target/release/linux-sandbox
+
+#### 安装
+
+```bash
+sudo make install
+```
+
+#### agentsight（可选，仅 Linux）
+
+> **注意：** AgentSight 是可选组件，提供基于 eBPF 的审计和可观测性能力，不是 ANOLISA 核心功能所必需的。
+
+```bash
+cd src/agentsight
+make build
+```
+
+产物：
+
+- target/release/agentsight
+
+#### 安装
+
+```bash
+sudo make install
+```
+
+### 步骤三：运行测试（推荐）
+
+#### 统一入口
 
 ```bash
 ./tests/run-all-tests.sh
@@ -262,7 +343,7 @@ co /skills
 ./tests/run-all-tests.sh --filter sight
 ```
 
-### 分组件测试
+#### 分组件测试
 
 ```bash
 # copilot-shell
@@ -278,25 +359,6 @@ cd src/agentsight && cargo test
 
 ---
 
-## 构建 RPM 包
-
-使用统一脚本：
-
-```bash
-./scripts/rpm-build.sh copilot-shell
-./scripts/rpm-build.sh agent-sec-core
-./scripts/rpm-build.sh anolisa-skills
-./scripts/rpm-build.sh agentsight
-./scripts/rpm-build.sh all
-```
-
-产物：
-
-- scripts/rpmbuild/RPMS/<arch>/*.rpm
-- scripts/rpmbuild/SRPMS/*.rpm
-
----
-
 ## 常见问题排查
 
 ### Node.js 版本不匹配
@@ -304,8 +366,7 @@ cd src/agentsight && cargo test
 使用 nvm 重新激活期望版本：
 
 ```bash
-source ~/.bashrc
-nvm use 20
+source "$HOME/.$(basename "$SHELL")rc"
 ```
 
 ### Rust 工具链不匹配
