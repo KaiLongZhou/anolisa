@@ -189,9 +189,9 @@ describe('AuthDialog', () => {
 
       const { lastFrame } = renderAuthDialog(settings);
 
-      // Since the auth dialog only shows OpenAI option now,
+      // Since the auth dialog only shows Custom Provider option now,
       // it won't show GEMINI_API_KEY messages
-      expect(lastFrame()).toContain('OpenAI');
+      expect(lastFrame()).toContain('Custom Provider');
     });
 
     it('should not show the GEMINI_API_KEY message if QWEN_DEFAULT_AUTH_TYPE is set to something else', () => {
@@ -277,9 +277,9 @@ describe('AuthDialog', () => {
 
       const { lastFrame } = renderAuthDialog(settings);
 
-      // Since the auth dialog only shows OpenAI option now,
+      // Since the auth dialog only shows Custom Provider option now,
       // it won't show GEMINI_API_KEY messages
-      expect(lastFrame()).toContain('OpenAI');
+      expect(lastFrame()).toContain('Custom Provider');
     });
   });
 
@@ -323,7 +323,7 @@ describe('AuthDialog', () => {
       const { lastFrame } = renderAuthDialog(settings);
 
       // This is a bit brittle, but it's the best way to check which item is selected.
-      expect(lastFrame()).toContain('● 2. OpenAI');
+      expect(lastFrame()).toContain('● 2. Custom Provider');
     });
 
     it('should fall back to default if QWEN_DEFAULT_AUTH_TYPE is not set', () => {
@@ -573,7 +573,7 @@ describe('AuthDialog', () => {
 
     // Wait for the dialog to fully render and keypress handler to be registered
     await waitFor(() => {
-      expect(lastFrame()).toContain('\u25cf 2. OpenAI');
+      expect(lastFrame()).toContain('\u25cf 2. Custom Provider');
     });
     await wait(); // extra tick: ensure keypress handler re-registered
 

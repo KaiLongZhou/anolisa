@@ -25,12 +25,12 @@ describe('OpenAIKeyPrompt', () => {
       <OpenAIKeyPrompt onSubmit={onSubmit} onCancel={onCancel} />,
     );
 
-    expect(lastFrame()).toContain('OpenAI Configuration Required');
+    expect(lastFrame()).toContain('Custom Provider Configuration Required');
     expect(lastFrame()).toContain(
       'https://bailian.console.aliyun.com/?tab=model#/api-key',
     );
     expect(lastFrame()).toContain(
-      'Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel',
+      '↑↓ select provider · Enter/Tab navigate fields · Esc cancel',
     );
   });
 
@@ -43,12 +43,12 @@ describe('OpenAIKeyPrompt', () => {
     );
 
     const output = lastFrame();
-    expect(output).toContain('OpenAI Configuration Required');
+    expect(output).toContain('Custom Provider Configuration Required');
     expect(output).toContain('API Key:');
     expect(output).toContain('Base URL:');
     expect(output).toContain('Model:');
     expect(output).toContain(
-      'Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel',
+      '↑↓ select provider · Enter/Tab navigate fields · Esc cancel',
     );
   });
 

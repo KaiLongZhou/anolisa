@@ -51,7 +51,7 @@ Use the `/auth` command inside the session to choose your provider:
 |----------|---------|-------------|
 | Qwen OAuth | `cosh` | Free tier with 2,000 requests/day — follow on-screen prompts |
 | API Key | `cosh --auth apikey` | Direct API key for Qwen models |
-| BaiLian (OpenAI Compatible) | `cosh --auth openai` | Alibaba Cloud BaiLian platform |
+| Custom Provider | `cosh --auth openai` | Any OpenAI-compatible endpoint — DashScope, DeepSeek, Kimi, GLM, MiniMax, or your own |
 
 > [!tip]
 >

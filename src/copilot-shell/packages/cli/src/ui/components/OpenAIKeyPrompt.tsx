@@ -12,6 +12,72 @@ import { Colors } from '../colors.js';
 import { useKeypress } from '../hooks/useKeypress.js';
 import { t } from '../../i18n/index.js';
 
+/**
+ * Preset provider configurations for quick-fill.
+ * "custom" means the user types their own Base URL.
+ */
+export interface OpenAIProvider {
+  id: string;
+  name: string;
+  baseUrl: string;
+  defaultModel: string;
+  /** URL to apply for an API key; empty string for custom */
+  apiKeyUrl: string;
+}
+
+export const OPENAI_PROVIDERS: OpenAIProvider[] = [
+  {
+    id: 'dashscope',
+    name: 'DashScope',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen3-coder-plus',
+    apiKeyUrl: 'https://bailian.console.aliyun.com/?tab=model#/api-key',
+  },
+  {
+    id: 'dashscope-coding-plan',
+    name: 'DashScope Coding Plan',
+    baseUrl: 'https://coding.dashscope.aliyuncs.com/v1',
+    defaultModel: 'qwen3-coder-plus',
+    apiKeyUrl: 'https://bailian.console.aliyun.com/?tab=coding-plan#/efm/coding-plan-detail',
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com',
+    defaultModel: 'deepseek-chat',
+    apiKeyUrl: 'https://platform.deepseek.com/api_keys',
+  },
+  {
+    id: 'glm',
+    name: 'GLM',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    defaultModel: 'glm-5',
+    apiKeyUrl: 'https://bigmodel.cn/usercenter/proj-mgmt/apikeys',
+  },
+  {
+    id: 'kimi',
+    name: 'Kimi',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    defaultModel: 'kimi-k2.5',
+    apiKeyUrl: 'https://platform.moonshot.cn/console/api-keys',
+  },
+  {
+    id: 'minimax',
+    name: 'MiniMax',
+    baseUrl: 'https://api.minimaxi.com/v1',
+    defaultModel: 'MiniMax-M2.5',
+    apiKeyUrl:
+      'https://platform.minimaxi.com/user-center/basic-information/interface-key',
+  },
+  {
+    id: 'custom',
+    name: t('Custom (enter Base URL manually)'),
+    baseUrl: '',
+    defaultModel: '',
+    apiKeyUrl: '',
+  },
+];
+
 interface OpenAIKeyPromptProps {
   onSubmit: (apiKey: string, baseUrl: string, model: string) => void;
   onCancel: () => void;
@@ -40,6 +106,8 @@ function maskApiKey(key: string): string {
   return key.slice(0, 3) + '*'.repeat(key.length - 3);
 }
 
+type FieldName = 'provider' | 'apiKey' | 'baseUrl' | 'model';
+
 export function OpenAIKeyPrompt({
   onSubmit,
   onCancel,
@@ -47,22 +115,43 @@ export function OpenAIKeyPrompt({
   defaultBaseUrl,
   defaultModel,
 }: OpenAIKeyPromptProps): React.JSX.Element {
+  // Detect initial provider from defaultBaseUrl
+  const detectInitialProvider = (): number => {
+    if (!defaultBaseUrl) return 0; // custom
+    const idx = OPENAI_PROVIDERS.findIndex(
+      (p) => p.id !== 'custom' && p.baseUrl === defaultBaseUrl,
+    );
+    return idx >= 0 ? idx : 0;
+  };
+
+  const [providerIndex, setProviderIndex] = useState(detectInitialProvider);
   const [apiKey, setApiKey] = useState(defaultApiKey || '');
-  const [baseUrl, setBaseUrl] = useState(defaultBaseUrl || '');
-  const [model, setModel] = useState(defaultModel || '');
-  const [currentField, setCurrentField] = useState<
-    'apiKey' | 'baseUrl' | 'model'
-  >('apiKey');
+  const initialProviderIndex = detectInitialProvider();
+  const initialProvider = OPENAI_PROVIDERS[initialProviderIndex];
+  const [baseUrl, setBaseUrl] = useState(
+    defaultBaseUrl || initialProvider?.baseUrl || '',
+  );
+  const [model, setModel] = useState(
+    defaultModel || (initialProvider?.id !== 'custom' ? initialProvider?.defaultModel : '') || '',
+  );
+  const [currentField, setCurrentField] = useState<FieldName>('provider');
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const selectedProvider = OPENAI_PROVIDERS[providerIndex];
+  const isCustom = selectedProvider?.id === 'custom';
 
   const validateAndSubmit = () => {
     setValidationError(null);
+    const effectiveBaseUrl = isCustom
+      ? baseUrl.trim()
+      : (selectedProvider?.baseUrl ?? '');
+    const effectiveModel = model.trim();
 
     try {
       const validated = credentialSchema.parse({
         apiKey: apiKey.trim(),
-        baseUrl: baseUrl.trim() || undefined,
-        model: model.trim() || undefined,
+        baseUrl: effectiveBaseUrl || undefined,
+        model: effectiveModel || undefined,
       });
 
       onSubmit(
@@ -84,19 +173,37 @@ export function OpenAIKeyPrompt({
     }
   };
 
+  const handleProviderChange = (newIndex: number) => {
+    setProviderIndex(newIndex);
+    // Clear API ke and modely when switching providers
+    setApiKey('');
+    setModel('');
+    const p = OPENAI_PROVIDERS[newIndex];
+    if (p && p.id !== 'custom') {
+      setBaseUrl(p.baseUrl);
+      setModel(p.defaultModel);
+    } else {
+      setBaseUrl('');
+    }
+  };
+
   useKeypress(
     (key) => {
-      // Handle escape
-      if (key.name === 'escape') {
+      // Handle escape or Ctrl+C
+      if (key.name === 'escape' || (key.ctrl && key.name === 'c')) {
         onCancel();
         return;
       }
 
       // Handle Enter key
       if (key.name === 'return') {
-        if (currentField === 'apiKey') {
-          // 允许空 API key 跳转到下一个字段，让用户稍后可以返回修改
-          setCurrentField('baseUrl');
+        if (currentField === 'provider') {
+          // Clear API key when entering from provider selection
+          setApiKey('');
+          setCurrentField('apiKey');
+          return;
+        } else if (currentField === 'apiKey') {
+          setCurrentField(isCustom ? 'baseUrl' : 'model');
           return;
         } else if (currentField === 'baseUrl') {
           setCurrentField('model');
@@ -115,29 +222,43 @@ export function OpenAIKeyPrompt({
 
       // Handle Tab key for field navigation
       if (key.name === 'tab') {
-        if (currentField === 'apiKey') {
-          setCurrentField('baseUrl');
+        if (currentField === 'provider') {
+          // Clear API key when leaving provider selection
+          setApiKey('');
+          setCurrentField('apiKey');
+        } else if (currentField === 'apiKey') {
+          setCurrentField(isCustom ? 'baseUrl' : 'model');
         } else if (currentField === 'baseUrl') {
           setCurrentField('model');
         } else if (currentField === 'model') {
-          setCurrentField('apiKey');
+          setCurrentField('provider');
         }
         return;
       }
 
-      // Handle arrow keys for field navigation
+      // Handle arrow keys
       if (key.name === 'up') {
-        if (currentField === 'baseUrl') {
+        if (currentField === 'provider') {
+          const newIndex =
+            (providerIndex - 1 + OPENAI_PROVIDERS.length) %
+            OPENAI_PROVIDERS.length;
+          handleProviderChange(newIndex);
+        } else if (currentField === 'apiKey') {
+          setCurrentField('provider');
+        } else if (currentField === 'baseUrl') {
           setCurrentField('apiKey');
         } else if (currentField === 'model') {
-          setCurrentField('baseUrl');
+          setCurrentField(isCustom ? 'baseUrl' : 'apiKey');
         }
         return;
       }
 
       if (key.name === 'down') {
-        if (currentField === 'apiKey') {
-          setCurrentField('baseUrl');
+        if (currentField === 'provider') {
+          const newIndex = (providerIndex + 1) % OPENAI_PROVIDERS.length;
+          handleProviderChange(newIndex);
+        } else if (currentField === 'apiKey') {
+          setCurrentField(isCustom ? 'baseUrl' : 'model');
         } else if (currentField === 'baseUrl') {
           setCurrentField('model');
         }
@@ -218,23 +339,43 @@ export function OpenAIKeyPrompt({
       width="100%"
     >
       <Text bold color={Colors.AccentBlue}>
-        {t('OpenAI Configuration Required')}
+        {t('Custom Provider Configuration Required')}
       </Text>
       {validationError && (
         <Box marginTop={1}>
           <Text color={Colors.AccentRed}>{validationError}</Text>
         </Box>
       )}
-      <Box marginTop={1}>
-        <Text>
-          {t(
-            'Please enter your OpenAI configuration. You can get an API key from',
-          )}{' '}
-          <Text color={Colors.AccentBlue}>
-            https://bailian.console.aliyun.com/?tab=model#/api-key
-          </Text>
+
+      {/* Provider selector */}
+      <Box marginTop={1} flexDirection="column">
+        <Text
+          color={currentField === 'provider' ? Colors.AccentBlue : Colors.Gray}
+        >
+          {t('Provider:')}
         </Text>
+        <Box marginLeft={2} flexDirection="column">
+          {OPENAI_PROVIDERS.map((provider, idx) => (
+            <Text
+              key={provider.id}
+              color={idx === providerIndex ? Colors.AccentBlue : Colors.Gray}
+            >
+              {idx === providerIndex ? '● ' : '○ '}
+              {provider.name}
+            </Text>
+          ))}
+        </Box>
       </Box>
+
+      {/* API key URL hint for preset providers */}
+      {selectedProvider && !isCustom && (
+        <Box marginTop={1} flexDirection="row">
+          <Text color={Colors.Gray}>{t('Get API key from: ')}</Text>
+          <Text color={Colors.AccentBlue}>{selectedProvider.apiKeyUrl}</Text>
+        </Box>
+      )}
+
+      {/* API Key field */}
       <Box marginTop={1} flexDirection="row">
         <Box width={12}>
           <Text
@@ -250,21 +391,36 @@ export function OpenAIKeyPrompt({
           </Text>
         </Box>
       </Box>
+
+      {/* Base URL: editable for custom, read-only for presets */}
       <Box marginTop={1} flexDirection="row">
         <Box width={12}>
           <Text
-            color={currentField === 'baseUrl' ? Colors.AccentBlue : Colors.Gray}
+            color={
+              currentField === 'baseUrl' && isCustom
+                ? Colors.AccentBlue
+                : Colors.Gray
+            }
           >
             {t('Base URL:')}
           </Text>
         </Box>
         <Box flexGrow={1}>
-          <Text>
-            {currentField === 'baseUrl' ? '> ' : '  '}
-            {baseUrl}
-          </Text>
+          {isCustom ? (
+            <Text>
+              {currentField === 'baseUrl' ? '> ' : '  '}
+              {baseUrl}
+            </Text>
+          ) : (
+            <Text color={Colors.Gray}>
+              {'  '}
+              {selectedProvider?.baseUrl}
+            </Text>
+          )}
         </Box>
       </Box>
+
+      {/* Model field */}
       <Box marginTop={1} flexDirection="row">
         <Box width={12}>
           <Text
@@ -282,7 +438,7 @@ export function OpenAIKeyPrompt({
       </Box>
       <Box marginTop={1}>
         <Text color={Colors.Gray}>
-          {t('Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel')}
+          {t('↑↓ select provider · Enter/Tab navigate fields · Esc cancel')}
         </Text>
       </Box>
     </Box>

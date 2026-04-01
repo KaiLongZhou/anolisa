@@ -986,7 +986,7 @@ export default {
     'Authenticated successfully with {{authType}} credentials.',
   'Invalid QWEN_DEFAULT_AUTH_TYPE value: "{{value}}". Valid values are: {{validValues}}':
     'Invalid QWEN_DEFAULT_AUTH_TYPE value: "{{value}}". Valid values are: {{validValues}}',
-  'OpenAI Configuration Required': 'OpenAI Configuration Required',
+  'Custom Provider Configuration Required': 'Custom Provider Configuration Required',
   'Please enter your OpenAI configuration. You can get an API key from':
     'Please enter your OpenAI configuration. You can get an API key from',
   'API Key:': 'API Key:',
@@ -995,6 +995,14 @@ export default {
   'Failed to validate credentials': 'Failed to validate credentials',
   'Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel':
     'Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel',
+  'Provider:': 'Provider:',
+  'Get API key from: ': 'Get API key from: ',
+  'Base URL:': 'Base URL:',
+  '↑↓ select provider · Enter/Tab navigate fields · Esc cancel':
+    '↑↓ select provider · Enter/Tab navigate fields · Esc cancel',
+  'Custom Provider': 'Custom Provider',
+  'Custom (enter Base URL manually)': 'Custom (enter Base URL manually)',
+  'Model:': 'Model:',
   'Aliyun AK/SK Configuration': 'Aliyun AK/SK Configuration',
   'Please enter your Aliyun Access Key credentials. You can get them from':
     'Please enter your Aliyun Access Key credentials. You can get them from',

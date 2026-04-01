@@ -38,3 +38,5 @@ scripts/rpmbuild/
 # Environment
 .env
 .env.local
+
+.qoder/

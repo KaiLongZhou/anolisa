@@ -45,7 +45,7 @@ export function AuthDialog(): React.JSX.Element {
     },
     {
       key: AuthType.USE_OPENAI,
-      label: t('OpenAI'),
+      label: t('Custom Provider'),
       value: AuthType.USE_OPENAI,
     },
     {

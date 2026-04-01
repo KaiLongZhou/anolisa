@@ -936,7 +936,7 @@ export default {
     '使用 {{authType}} 凭据成功认证。',
   'Invalid QWEN_DEFAULT_AUTH_TYPE value: "{{value}}". Valid values are: {{validValues}}':
     '无效的 QWEN_DEFAULT_AUTH_TYPE 值："{{value}}"。有效值为：{{validValues}}',
-  'OpenAI Configuration Required': '需要配置 OpenAI',
+  'Custom Provider Configuration Required': '需要配置 OpenAI',
   'Please enter your OpenAI configuration. You can get an API key from':
     '请输入您的 OpenAI 配置。您可以从以下地址获取 API 密钥：',
   'API Key:': 'API 密钥：',
@@ -944,6 +944,14 @@ export default {
   'Failed to validate credentials': '验证凭据失败',
   'Press Enter to continue, Tab/↑↓ to navigate, Esc to cancel':
     '按 Enter 继续，Tab/↑↓ 导航，Esc 取消',
+  'Provider:': '提供商：',
+  'Get API key from: ': '获取 API 密钥：',
+  'Base URL:': '服务地址：',
+  '↑↓ select provider · Enter/Tab navigate fields · Esc cancel':
+    '↑↓ 选择提供商 · Enter/Tab 切换字段 · Esc 取消',
+  'Custom Provider': '自定义提供商',
+  'Custom (enter Base URL manually)': '自定义（手动填写 Base URL）',
+  'Model:': '模型：',
   'Aliyun AK/SK Configuration': '阿里云 AK/SK 配置',
   'Please enter your Aliyun Access Key credentials. You can get them from':
     '请输入您的阿里云 Access Key 凭证。您可以从以下地址获取：',
