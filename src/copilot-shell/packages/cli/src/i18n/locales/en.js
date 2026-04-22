@@ -1537,4 +1537,60 @@ export default {
   'Session exported to JSONL: {{filename}}':
     'Session exported to JSONL: {{filename}}',
   'Failed to export session: {{error}}': 'Failed to export session: {{error}}',
+  // Clawhub
+  'Manage skills via clawhub CLI': 'Manage skills via clawhub CLI',
+  'Search skills in the registry': 'Search skills in the registry',
+  'Install a skill': 'Install a skill',
+  'Uninstall a skill': 'Uninstall a skill',
+  'Update skill(s). Usage: update <slug> | update --all':
+    'Update skill(s). Usage: update <slug> | update --all',
+  'List installed skills': 'List installed skills',
+  'Browse the skill marketplace': 'Browse the skill marketplace',
+  'View skill details': 'View skill details',
+  'Login to clawhub': 'Login to clawhub',
+  'Show current identity': 'Show current identity',
+  'Star a skill': 'Star a skill',
+  'Unstar a skill': 'Unstar a skill',
+  'clawhub CLI is not installed. Install it now via npm install -g clawhub?':
+    'clawhub CLI is not installed. Install it now via npm install -g clawhub?',
+  'Installing clawhub via npm install -g clawhub …':
+    'Installing clawhub via npm install -g clawhub …',
+  'clawhub installed successfully.': 'clawhub installed successfully.',
+  'Failed to install clawhub: {{error}}\nPlease install manually: npm install -g clawhub':
+    'Failed to install clawhub: {{error}}\nPlease install manually: npm install -g clawhub',
+  'clawhub exited with code {{code}}.': 'clawhub exited with code {{code}}.',
+  'Hint: Run `clawhub login` to authenticate and bypass rate limits.':
+    'Hint: Run `clawhub login` to authenticate and bypass rate limits.',
+  'No results.': 'No results.',
+  'Command completed successfully.': 'Command completed successfully.',
+  'Clawhub Search': 'Clawhub Search',
+  'Clawhub Install': 'Clawhub Install',
+  'Clawhub Uninstall': 'Clawhub Uninstall',
+  'Clawhub Update': 'Clawhub Update',
+  'Clawhub Installed Skills': 'Clawhub Installed Skills',
+  'Clawhub Explore': 'Clawhub Explore',
+  'Clawhub Inspect': 'Clawhub Inspect',
+  'Clawhub Login': 'Clawhub Login',
+  'Clawhub Identity': 'Clawhub Identity',
+  'Clawhub Star': 'Clawhub Star',
+  'Clawhub Unstar': 'Clawhub Unstar',
+  'Usage: /clawhub <subcommand> [args]': 'Usage: /clawhub <subcommand> [args]',
+  'Subcommands:': 'Subcommands:',
+  'Search skills in the registry (subcommand help)':
+    '  search <keyword>        Search skills in the registry',
+  'Install a skill (subcommand help)':
+    '  install <slug>          Install a skill',
+  'Uninstall a skill (subcommand help)':
+    '  uninstall <slug>        Uninstall a skill',
+  'Update skills (subcommand help)':
+    '  update <slug|--all>     Update skill(s)',
+  'List installed skills (subcommand help)':
+    '  list                    List installed skills',
+  'Browse marketplace (subcommand help)':
+    '  explore                 Browse the skill marketplace',
+  'View details (subcommand help)':
+    '  inspect <slug>          View skill details',
+  'Login (subcommand help)': '  login                   Login to clawhub',
+  'Show identity (subcommand help)':
+    '  whoami                  Show current identity',
 };
