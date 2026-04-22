@@ -1545,12 +1545,10 @@ export default {
   'Update skill(s). Usage: update <slug> | update --all':
     'Update skill(s). Usage: update <slug> | update --all',
   'List installed skills': 'List installed skills',
-  'Browse the skill marketplace': 'Browse the skill marketplace',
   'View skill details': 'View skill details',
   'Login to clawhub': 'Login to clawhub',
+  'Usage: /clawhub login <token>': 'Usage: /clawhub login <token>',
   'Show current identity': 'Show current identity',
-  'Star a skill': 'Star a skill',
-  'Unstar a skill': 'Unstar a skill',
   'clawhub CLI is not installed. Install it now via npm install -g clawhub?':
     'clawhub CLI is not installed. Install it now via npm install -g clawhub?',
   'Installing clawhub via npm install -g clawhub …':
@@ -1568,12 +1566,9 @@ export default {
   'Clawhub Uninstall': 'Clawhub Uninstall',
   'Clawhub Update': 'Clawhub Update',
   'Clawhub Installed Skills': 'Clawhub Installed Skills',
-  'Clawhub Explore': 'Clawhub Explore',
   'Clawhub Inspect': 'Clawhub Inspect',
   'Clawhub Login': 'Clawhub Login',
   'Clawhub Identity': 'Clawhub Identity',
-  'Clawhub Star': 'Clawhub Star',
-  'Clawhub Unstar': 'Clawhub Unstar',
   'Usage: /clawhub <subcommand> [args]': 'Usage: /clawhub <subcommand> [args]',
   'Subcommands:': 'Subcommands:',
   'Search skills in the registry (subcommand help)':
@@ -1586,11 +1581,9 @@ export default {
     '  update <slug|--all>     Update skill(s)',
   'List installed skills (subcommand help)':
     '  list                    List installed skills',
-  'Browse marketplace (subcommand help)':
-    '  explore                 Browse the skill marketplace',
   'View details (subcommand help)':
     '  inspect <slug>          View skill details',
-  'Login (subcommand help)': '  login                   Login to clawhub',
+  'Login (subcommand help)': '  login <token>           Login to clawhub',
   'Show identity (subcommand help)':
     '  whoami                  Show current identity',
 };

@@ -1371,12 +1371,10 @@ export default {
   'Update skill(s). Usage: update <slug> | update --all':
     '更新技能。用法：update <slug> | update --all',
   'List installed skills': '列出已安装的技能',
-  'Browse the skill marketplace': '浏览技能市场',
   'View skill details': '查看技能详情',
   'Login to clawhub': '登录 clawhub',
+  'Usage: /clawhub login <token>': '用法: /clawhub login <token>',
   'Show current identity': '显示当前身份',
-  'Star a skill': '收藏技能',
-  'Unstar a skill': '取消收藏技能',
   'clawhub CLI is not installed. Install it now via npm install -g clawhub?':
     'clawhub CLI 尚未安装。是否立即通过 npm install -g clawhub 安装？',
   'Installing clawhub via npm install -g clawhub …':
@@ -1394,12 +1392,9 @@ export default {
   'Clawhub Uninstall': 'Clawhub 卸载',
   'Clawhub Update': 'Clawhub 更新',
   'Clawhub Installed Skills': 'Clawhub 已安装技能',
-  'Clawhub Explore': 'Clawhub 探索',
   'Clawhub Inspect': 'Clawhub 详情',
   'Clawhub Login': 'Clawhub 登录',
   'Clawhub Identity': 'Clawhub 身份',
-  'Clawhub Star': 'Clawhub 收藏',
-  'Clawhub Unstar': 'Clawhub 取消收藏',
   'Usage: /clawhub <subcommand> [args]': '用法：/clawhub <子命令> [参数]',
   'Subcommands:': '子命令：',
   'Search skills in the registry (subcommand help)':
@@ -1409,9 +1404,7 @@ export default {
   'Update skills (subcommand help)': '  update <slug|--all>     更新技能',
   'List installed skills (subcommand help)':
     '  list                    列出已安装技能',
-  'Browse marketplace (subcommand help)':
-    '  explore                 浏览技能市场',
   'View details (subcommand help)': '  inspect <slug>          查看技能详情',
-  'Login (subcommand help)': '  login                   登录 clawhub',
+  'Login (subcommand help)': '  login <token>           登录 clawhub',
   'Show identity (subcommand help)': '  whoami                  显示当前身份',
 };

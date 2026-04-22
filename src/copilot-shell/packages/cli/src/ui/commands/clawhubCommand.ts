@@ -7,6 +7,9 @@
 import { execSync, spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import path from 'node:path';
+
+/** @internal Thin wrapper for testing – override in tests. */
+export const _deps = { execSync, spawn };
 import {
   CommandKind,
   type CommandContext,
@@ -35,10 +38,11 @@ function clawhubOutputItem(
 /** Subcommands that require the --dir parameter. */
 const COMMANDS_NEED_DIR = new Set([
   'search',
-  'explore',
   'inspect',
   'install',
+  'uninstall',
   'update',
+  'list',
 ]);
 
 /** Title keys for each subcommand (passed to t() at runtime). */
@@ -48,12 +52,9 @@ const SUBCOMMAND_TITLE_KEYS: Record<string, string> = {
   uninstall: 'Clawhub Uninstall',
   update: 'Clawhub Update',
   list: 'Clawhub Installed Skills',
-  explore: 'Clawhub Explore',
   inspect: 'Clawhub Inspect',
   login: 'Clawhub Login',
   whoami: 'Clawhub Identity',
-  star: 'Clawhub Star',
-  unstar: 'Clawhub Unstar',
 };
 
 function installClawhubProcess(): Promise<{
@@ -61,7 +62,7 @@ function installClawhubProcess(): Promise<{
   output: string;
 }> {
   return new Promise((resolve) => {
-    const proc = spawn('npm', ['install', '-g', 'clawhub'], {
+    const proc = _deps.spawn('npm', ['install', '-g', 'clawhub'], {
       stdio: 'pipe',
       shell: true,
     });
@@ -96,7 +97,7 @@ function runClawhubProcess(
   args: string[],
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const proc = spawn('clawhub', args, {
+    const proc = _deps.spawn('clawhub', args, {
       stdio: 'pipe',
       shell: true,
     });
@@ -162,6 +163,8 @@ function parseResultItems(output: string): ClawhubResultItem[] {
 
 /**
  * Strip ANSI escape sequences and spinner lines from CLI output to get clean text.
+ * Spinner animation characters are removed entirely, while result indicators
+ * (✔ / ✖) are stripped but their content is preserved.
  */
 function cleanOutput(raw: string): string {
   // eslint-disable-next-line no-control-regex
@@ -169,20 +172,34 @@ function cleanOutput(raw: string): string {
   return raw
     .replace(ansiPattern, '') // strip ANSI codes
     .split('\n')
-    .filter((line) => {
+    .map((line) => {
       const t = line.trim();
-      // Filter out ora spinner lines ("- Searching", "✔ Done", etc.)
-      return t && !/^[-⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✔✖] /.test(t);
+      if (!t) return '';
+      // Strip spinner animation lines entirely (ora progress indicators)
+      if (/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] /.test(t) || /^- /.test(t)) {
+        return '';
+      }
+      // Strip result prefix (✔ / ✖) but preserve the content after it
+      if (/^[✔✖] /.test(t)) {
+        return t.slice(2).trim();
+      }
+      return t;
     })
+    .filter(Boolean)
     .join('\n')
     .trim();
 }
 
 /** Subcommands whose output should be parsed into structured item lists. */
-const LIST_SUBCOMMANDS = new Set(['search', 'list', 'explore']);
+const LIST_SUBCOMMANDS = new Set(['search', 'list']);
 
 /** Cache: once confirmed installed, skip future checks within the session. */
 let clawhubAvailable: boolean | null = null;
+
+/** @internal Reset cache – exposed for testing only. */
+export function _resetClawhubCache(): void {
+  clawhubAvailable = null;
+}
 
 /**
  * Ensures clawhub CLI is available.
@@ -200,7 +217,7 @@ async function ensureClawhub(
   }
 
   try {
-    execSync('clawhub --version', { stdio: 'pipe' });
+    _deps.execSync('clawhub --version', { stdio: 'pipe' });
     clawhubAvailable = true;
     return 'ready';
   } catch {
@@ -288,7 +305,6 @@ async function execClawhub(
           t('Uninstall a skill (subcommand help)'),
           t('Update skills (subcommand help)'),
           t('List installed skills (subcommand help)'),
-          t('Browse marketplace (subcommand help)'),
           t('View details (subcommand help)'),
           t('Login (subcommand help)'),
           t('Show identity (subcommand help)'),
@@ -320,7 +336,10 @@ async function execClawhub(
 
   // 3. Execute
   const result = await runClawhubProcess(fullArgs);
-  const rawOutput = (result.stdout || result.stderr || '').trim();
+  const rawOutput = [result.stdout, result.stderr]
+    .filter(Boolean)
+    .join('\n')
+    .trim();
   const titleKey = SUBCOMMAND_TITLE_KEYS[subcommand ?? ''];
   const title = titleKey ? t(titleKey) : `Clawhub ${subcommand}`;
 
@@ -412,15 +431,6 @@ const listSubCommand: SlashCommand = {
   action: (ctx, args) => execClawhub(ctx, `list ${args}`),
 };
 
-const exploreSubCommand: SlashCommand = {
-  name: 'explore',
-  get description() {
-    return t('Browse the skill marketplace');
-  },
-  kind: CommandKind.BUILT_IN,
-  action: (ctx, args) => execClawhub(ctx, `explore ${args}`),
-};
-
 const inspectSubCommand: SlashCommand = {
   name: 'inspect',
   get description() {
@@ -436,7 +446,21 @@ const loginSubCommand: SlashCommand = {
     return t('Login to clawhub');
   },
   kind: CommandKind.BUILT_IN,
-  action: (ctx, args) => execClawhub(ctx, `login ${args}`),
+  action: (ctx, args) => {
+    const token = args.trim();
+    if (!token) {
+      ctx.ui.addItem(
+        clawhubOutputItem({
+          title: t('Clawhub Login'),
+          text: t('Usage: /clawhub login <token>'),
+          isError: true,
+        }),
+        Date.now(),
+      );
+      return;
+    }
+    return execClawhub(ctx, `login --token ${token}`);
+  },
 };
 
 const whoamiSubCommand: SlashCommand = {
@@ -446,24 +470,6 @@ const whoamiSubCommand: SlashCommand = {
   },
   kind: CommandKind.BUILT_IN,
   action: (ctx, args) => execClawhub(ctx, `whoami ${args}`),
-};
-
-const starSubCommand: SlashCommand = {
-  name: 'star',
-  get description() {
-    return t('Star a skill');
-  },
-  kind: CommandKind.BUILT_IN,
-  action: (ctx, args) => execClawhub(ctx, `star ${args} --yes`),
-};
-
-const unstarSubCommand: SlashCommand = {
-  name: 'unstar',
-  get description() {
-    return t('Unstar a skill');
-  },
-  kind: CommandKind.BUILT_IN,
-  action: (ctx, args) => execClawhub(ctx, `unstar ${args} --yes`),
 };
 
 // ── Main command ────────────────────────────────────────────────────
@@ -480,12 +486,9 @@ export const clawhubCommand: SlashCommand = {
     uninstallSubCommand,
     updateSubCommand,
     listSubCommand,
-    exploreSubCommand,
     inspectSubCommand,
     loginSubCommand,
     whoamiSubCommand,
-    starSubCommand,
-    unstarSubCommand,
   ],
   action: (ctx, args) => execClawhub(ctx, args),
 };

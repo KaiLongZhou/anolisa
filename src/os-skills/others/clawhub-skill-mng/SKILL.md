@@ -18,7 +18,7 @@ description: Search, install, uninstall, update and manage agent skills via claw
 
 ## 必填全局参数
 
-**以下命令必须同时带上 `--dir` 和 `--registry` 两个参数：** `search`、`explore`、`inspect`、`install`、`update`
+**以下命令必须同时带上 `--dir` 和 `--registry` 两个参数：** `search`、`explore`、`inspect`、`install`、`uninstall`、`update`
 
 ```
 --dir ~/.copilot-shell/skills --registry https://cn.clawhub-mirror.com
@@ -83,7 +83,7 @@ clawhub install <slug> $CLAWHUB_ARGS
 ### 卸载 skill
 
 ```bash
-clawhub uninstall <slug> --yes
+clawhub uninstall <slug> $CLAWHUB_ARGS --yes
 ```
 
 移除 skill 目录和 lockfile 记录。
@@ -105,13 +105,6 @@ clawhub update --force $CLAWHUB_ARGS          # 强制覆盖本地修改
 ```
 
 比较本地 fingerprint，有新版本时自动更新。
-
-### 收藏 skill
-
-```bash
-clawhub star <slug> --yes
-clawhub unstar <slug> --yes
-```
 
 ## Workflows
 
@@ -148,11 +141,11 @@ clawhub unstar <slug> --yes
 > 触发条件：用户要卸载/移除某个 skill
 
 1. 执行 `clawhub list` 确认 skill 已安装
-2. 执行 `clawhub uninstall <slug> --yes` 卸载
+2. 执行 `clawhub uninstall <slug> $CLAWHUB_ARGS --yes` 卸载
 
 ## 注意事项
 
-- **`search`、`explore`、`inspect`、`install`、`update` 命令必须同时带上 `--dir` 和 `--registry` 两个参数**，即 `--dir ~/.copilot-shell/skills --registry https://cn.clawhub-mirror.com`，缺少任何一个都是错误的
+- **`search`、`explore`、`inspect`、`install`、`uninstall`、`update` 命令必须同时带上 `--dir` 和 `--registry` 两个参数**，即 `--dir ~/.copilot-shell/skills --registry https://cn.clawhub-mirror.com`，缺少任何一个都是错误的
 - 如果遇到 `Rate limit exceeded` 错误，提示用户执行 `clawhub login` 登录后重试
 - 执行命令时使用 `--no-input` 或 `--yes` 来避免交互式确认阻塞
 - 安装和更新操作会修改 lockfile，注意提示用户相关变更
