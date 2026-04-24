@@ -217,7 +217,7 @@ async function ensureClawhub(
   }
 
   try {
-    _deps.execSync('clawhub --version', { stdio: 'pipe' });
+    _deps.execSync('clawhub -V', { stdio: 'pipe' });
     clawhubAvailable = true;
     return 'ready';
   } catch {
