@@ -1,12 +1,10 @@
 /**
  * @license
- * Copyright 2025 Qwen
+ * Copyright 2026 Alibaba Cloud
  * SPDX-License-Identifier: Apache-2.0
  */
 
 import { execSync, spawn } from 'node:child_process';
-import { homedir } from 'node:os';
-import path from 'node:path';
 
 /** @internal Thin wrapper for testing – override in tests. */
 export const _deps = { execSync, spawn };
@@ -21,11 +19,33 @@ import {
   type ClawhubResultItem,
   type HistoryItemClawhubOutput,
 } from '../types.js';
+import { Storage } from '@copilot-shell/core';
 import { t } from '../../i18n/index.js';
 import React from 'react';
 import { Text } from 'ink';
 
-const SKILLS_DIR = path.join(homedir(), '.copilot-shell', 'skills');
+const SKILLS_DIR = new Storage('').getUserSkillsDir();
+
+/**
+ * User-local prefix for clawhub: ~/.copilot-shell/bin
+ * `npm install --prefix <dir>` creates a symlink at <dir>/node_modules/.bin/clawhub,
+ * so no root / sudo is required for any user.
+ */
+const CLAWHUB_PREFIX_DIR = Storage.getGlobalBinDir();
+const CLAWHUB_LOCAL_BIN = `${CLAWHUB_PREFIX_DIR}/node_modules/.bin/clawhub`;
+
+/**
+ * Returns the clawhub executable path to use.
+ * Prefers the user-local install; falls back to whatever is on PATH.
+ */
+function getClawhubExecutable(): string {
+  try {
+    _deps.execSync(`"${CLAWHUB_LOCAL_BIN}" -V`, { stdio: 'pipe' });
+    return CLAWHUB_LOCAL_BIN;
+  } catch {
+    return 'clawhub';
+  }
+}
 
 type ClawhubOutputItem = Omit<HistoryItemClawhubOutput, 'id'>;
 
@@ -62,10 +82,12 @@ function installClawhubProcess(): Promise<{
   output: string;
 }> {
   return new Promise((resolve) => {
-    const proc = _deps.spawn('npm', ['install', '-g', 'clawhub'], {
-      stdio: 'pipe',
-      shell: true,
-    });
+    // Install into the user-local prefix – no root/sudo required.
+    const proc = _deps.spawn(
+      'npm',
+      ['install', '--prefix', CLAWHUB_PREFIX_DIR, 'clawhub'],
+      { stdio: 'pipe', shell: true },
+    );
     let stdout = '';
     let stderr = '';
     proc.stdout?.on('data', (data: Buffer) => {
@@ -97,7 +119,7 @@ function runClawhubProcess(
   args: string[],
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
-    const proc = _deps.spawn('clawhub', args, {
+    const proc = _deps.spawn(getClawhubExecutable(), args, {
       stdio: 'pipe',
       shell: true,
     });
@@ -216,6 +238,16 @@ async function ensureClawhub(
     return 'ready';
   }
 
+  // 1. Check user-local install first (no PATH dependency)
+  try {
+    _deps.execSync(`"${CLAWHUB_LOCAL_BIN}" -V`, { stdio: 'pipe' });
+    clawhubAvailable = true;
+    return 'ready';
+  } catch {
+    // not locally installed
+  }
+
+  // 2. Fall back to system PATH
   try {
     _deps.execSync('clawhub -V', { stdio: 'pipe' });
     clawhubAvailable = true;
@@ -232,7 +264,7 @@ async function ensureClawhub(
   context.ui.addItem(
     {
       type: MessageType.INFO,
-      text: t('Installing clawhub via npm install -g clawhub …'),
+      text: t('Installing clawhub to {{dir}} …', { dir: CLAWHUB_PREFIX_DIR }),
     },
     Date.now(),
   );
@@ -243,8 +275,8 @@ async function ensureClawhub(
       clawhubOutputItem({
         title: 'Clawhub',
         text: t(
-          'Failed to install clawhub: {{error}}\nPlease install manually: npm install -g clawhub',
-          { error: installResult.output },
+          'Failed to install clawhub: {{error}}\nPlease install manually: npm install --prefix {{dir}} clawhub',
+          { error: installResult.output, dir: CLAWHUB_PREFIX_DIR },
         ),
         isError: true,
       }),
@@ -280,9 +312,7 @@ async function execClawhub(
       prompt: React.createElement(
         Text,
         null,
-        t(
-          'clawhub CLI is not installed. Install it now via npm install -g clawhub?',
-        ),
+        t('clawhub CLI is not installed. Install it now?'),
       ),
       originalInvocation: {
         raw: context.invocation?.raw || `/clawhub ${rawArgs}`,

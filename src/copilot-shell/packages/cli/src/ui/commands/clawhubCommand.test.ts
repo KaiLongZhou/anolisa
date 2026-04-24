@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 Qwen
+ * Copyright 2026 Alibaba Cloud。
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -127,7 +127,7 @@ describe('clawhubCommand', () => {
       expect(mockSpawn()).toHaveBeenNthCalledWith(
         1,
         'npm',
-        ['install', '-g', 'clawhub'],
+        expect.arrayContaining(['install', '--prefix', 'clawhub']),
         expect.any(Object),
       );
     });
