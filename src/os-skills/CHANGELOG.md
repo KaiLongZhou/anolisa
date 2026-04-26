@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3
+
+- Updated `sysom-agentsight` skill: removed custom `--db` flag. (#366)
+- Updated `sysom-agentsight` skill: added support for querying token savings. (#355)
+- Added `install-hermes` skill. (#353)
+- Updated `sysom-agentsight` skill: improved interruption query. (#334)
+- Added `clawhub-skill-mng` skill for managing agent skills via the Clawhub CLI. (#314)
+- Updated `xlsx` skill: refined descriptions to broaden applicability. (#200)
+
 ## 0.2.2
 
 - Support enable AgentSight dashboard in `agentsight` skill. (#222)
